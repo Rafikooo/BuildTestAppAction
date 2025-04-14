@@ -261,7 +261,28 @@ runs:
             if: inputs.e2e_js == 'yes'
             run: |
                 export DISPLAY=:99
-                chrome --enable-automation --disable-background-networking --no-default-browser-check --no-first-run --disable-popup-blocking --disable-default-apps --allow-insecure-localhost --disable-translate --remote-debugging-port=9222 --disable-extensions --no-sandbox --enable-features=Metal --headless --window-size=2880,1800 --proxy-server='direct://' --proxy-bypass-list='*' http://127.0.0.1 > /dev/null 2>&1 &
+                google-chrome --enable-automation --disable-background-networking --no-default-browser-check --no-first-run \
+                --disable-popup-blocking --disable-default-apps --allow-insecure-localhost --disable-translate \
+                --remote-debugging-port=9222 --disable-extensions --no-sandbox --headless --window-size=2880,1800 \
+                --proxy-server='direct://' --proxy-bypass-list='*' about:blank > /dev/null 2>&1 &
+                
+                google-chrome --version
+                
+                max_attempts=5
+                attempt=0
+                
+                echo "Checking if Chrome is running..."
+                while ! curl -s --fail http://127.0.0.1:9222/json/version > /dev/null; do
+                  attempt=$((attempt + 1))
+                  if [ $attempt -ge $max_attempts ]; then
+                      echo "Chrome failed to start after $max_attempts attempts."
+                      exit 1
+                  fi
+                  echo "Attempt $attempt: Chrome is not running yet. Retrying in 2 seconds..."
+                  sleep 2
+                done
+                
+                echo "Chrome is running successfully."
             shell: bash
             working-directory: "${{ env.test_dir }}"
 
