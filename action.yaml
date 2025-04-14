@@ -226,19 +226,36 @@ runs:
         -   name: Remove default Google Chrome installation
             if: inputs.e2e_js == 'yes'
             run: |
-                which google-chrome && google-chrome --version || echo "Google Chrome successfully removed"
-                sudo dpkg --remove google-chrome-stable
-                sudo apt-get purge -y google-chrome-stable
+                which google-chrome && google-chrome --version || echo "Google Chrome not found"
+                sudo dpkg --remove google-chrome-stable || true
+                sudo apt-get purge -y google-chrome-stable || true
                 sudo rm -f /usr/bin/google-chrome /usr/bin/chromedriver
-                which google-chrome && google-chrome --version || echo "Google Chrome successfully removed"
-                which chromedriver || echo "Google Chromedriver successfully removed"
+                which google-chrome && google-chrome --version || echo "Default Google Chrome removed"
+                which chromedriver || echo "Default Chromedriver removed"
             shell: bash
 
-        -   uses: browser-actions/setup-chrome@latest
+        -   name: Install chrome-for-testing
             if: inputs.e2e_js == 'yes'
-            with:
-                chrome-version: "${{ inputs.chrome_version }}"
-                install-chromedriver: 'true'
+            run: |
+                CHROME_FOR_TESTING_VERSION="${{ inputs.chrome_version }}"
+                if [ "$CHROME_FOR_TESTING_VERSION" = "stable" ]; then
+                    CHROME_FOR_TESTING_VERSION="135.0.7049.84"
+                fi
+                echo "Using Chrome for Testing version: $CHROME_FOR_TESTING_VERSION"
+                
+                wget -q "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_FOR_TESTING_VERSION}/linux64/chrome-linux64.zip"
+                wget -q "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_FOR_TESTING_VERSION}/linux64/chromedriver-linux64.zip"
+  
+                unzip -q chrome-linux64.zip -d chrome_chrome
+                unzip -q chromedriver-linux64.zip -d chrome_driver
+  
+                sudo mkdir -p /opt/chrome-for-testing
+                sudo mv chrome_chrome/chrome-linux64 /opt/chrome-for-testing/chrome || sudo mv chrome_chrome/chrome /opt/chrome-for-testing/chrome
+                sudo mv chrome_driver/chromedriver-linux64 /opt/chrome-for-testing/chromedriver || sudo mv chrome_driver/chromedriver /opt/chrome-for-testing/chromedriver
+  
+                sudo ln -sf /opt/chrome-for-testing/chrome /usr/bin/google-chrome
+                sudo ln -sf /opt/chrome-for-testing/chromedriver /usr/bin/chromedriver
+            shell: bash
 
         -   name: Run Chrome Headless
             if: inputs.e2e_js == 'yes'
